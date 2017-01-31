@@ -1,0 +1,20 @@
+{
+  "name": "bm-reqres-js-classes",
+  "description": "JS classes for Reqres Framework",
+  "main": "./root.js",
+  "dependencies": {
+    "jquery": "~1.8.1"
+  },
+  "keywords": [
+    "reqres",
+    "jquery",
+    "classes"
+  ],
+  "authors": [
+    "Max Buldovsky <max@buldovsky.ru>"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "README.md"
+  ]
+}
