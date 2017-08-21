@@ -5,7 +5,7 @@
  * Основной смысл объекта это работа со списком элементов этого объекта
  * 
  */
-define(['jquery', 'reqres-classes/root'], function($, rootClass){
+define(['jquery', './root'], function($, rootClass){
     
     
     /**
@@ -21,7 +21,7 @@ define(['jquery', 'reqres-classes/root'], function($, rootClass){
     var modalContainer
     var contextDataId = 'objectmodal'    
     
-    return rootClass.extend({
+    var modalClass = rootClass.extend({
 
         init: function(context, element){
 
@@ -32,9 +32,20 @@ define(['jquery', 'reqres-classes/root'], function($, rootClass){
             
             // один раз только создаем контейнер
             if(!modalContainer) modalContainer = $('<div>').appendTo($('body'))
+			else {
+            
+                // скрываем предидущую навигацию
+                modalContainer.children('div').each(function(){
+                    
+                    $(this).find('nav').hide()
+                    
+                })
                 
+            }   
+            
 			// переносим модалку в контейнер
             this.$element.appendTo(modalContainer)
+
             
             // в контекст сохраняем себя
         	$(context).data(contextDataId, this)
@@ -48,16 +59,34 @@ define(['jquery', 'reqres-classes/root'], function($, rootClass){
                 
                 $(this).remove()
 
-                modalContainer.children().last().trigger('refresh')
+                modalContainer.children().last()
+                	// отображаем навигацию
+                    .find('nav').show().end()
+                    .trigger('refresh')
 
                 
             })
+
+            this.opened = $.Deferred()
+            // когда модалка откроется, событие выполнится
+            this.$element.one('shown.bs.modal', function(){ _this.opened.resolve() })
+            
             
             // выводим
-            this.$element.modal('show')
+            this.$element.on('shown.bs.modal', function(){
+                
+                $(this).css('margin-bottom', _this.$element.find('nav.navbar-fixed-bottom').outerHeight())
+                
+            }).modal('show')
+          
             
         },
         
+        whenOpened: function(){
+          
+            return this.opened
+            
+        },
         /**
          *
          * 
@@ -77,7 +106,6 @@ define(['jquery', 'reqres-classes/root'], function($, rootClass){
 					// мы должны передать эти данные в нижестоящее модальное окно
                     
                     //console.log(arguments); 
-                    
                     _this.hide() 
                     
                 })
@@ -140,4 +168,11 @@ define(['jquery', 'reqres-classes/root'], function($, rootClass){
         
     })
     
+    modalClass.add = function(modal){
+        
+        return new modalClass(modal, modal)
+        
+    }
+    
+    return modalClass
 })

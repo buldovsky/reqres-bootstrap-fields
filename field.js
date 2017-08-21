@@ -3,7 +3,7 @@
  * Класс Полей
  * 
  */
-define(['reqres-classes/root'], function(rootClass){
+define(['./root'], function(rootClass){
     
     return rootClass.extend({
 
@@ -14,15 +14,17 @@ define(['reqres-classes/root'], function(rootClass){
             this.input = input
             this.$input = $(input)
             
+            
             // при изменении сообщаем
             this.$input.on('input', function(e){
             
-                _this.change()
+                // сообщаем что мы изменились
+                // но не меняем себя
+                _this.change(false)
                 
             })
-
+            
             this.nullvalue = false
-
            
         },
         
@@ -31,6 +33,7 @@ define(['reqres-classes/root'], function(rootClass){
          *
          * Устанавливаем/возвращаем значение (любое включая null)
          *
+         * Именно устанавливаем извне при самонажатиях этот метод нигде не вызывается
          *
          */  
         val: function(value){
@@ -59,27 +62,158 @@ define(['reqres-classes/root'], function(rootClass){
                 
             }
             
-            var oldval = this.val()
             // устанавливаем значение через наследуемую функцию
-            this._setValue(value)
+            if(this._setValue(value) === false){
+                
+                alert('Не удалось установить значение в поле')
+                console.log('Не удалось установить значение в поле', value)
+				return
+            }
+
+            // при каждой установке значения мы пересохраняем приятное значение
+            this._setPretty(this._getValuePretty(this._getValue()))
             
+            // запускаем обработчик изменения
+            // не факт, что она сработает
             this.change()
-            
-            this._setPretty(this._getValuePretty())
 
 			return this
         },
 
+        
+        /**
+         *
+         * Либо добавляем обработчик события
+         * Либо выполняем событие изменения
+         *     если передать параметр true, событие будет инициировано даже если значение не изменилось
+         *
+         * Здесь мы использум именно системное значение
+         * Так как например объекты сравнивать невозможно
+         *
+         */         
+        change: function(arg){
+
+            if(typeof arg !== 'function') {
+
+                var newvalue = this.valueSystem()
+                // если значение не поменялось, уходим
+                // если конечно не установлино форсипровано изменить себя
+                if((this.oldval === newvalue) && arg !== true) return this
+
+                var oldval = this.oldval
+                
+                // значение поменялось, сохраняем новое
+                this.oldval = newvalue
+                
+                // выполняем обработчик
+                $(this).trigger('customchange', this._change( this.val(), oldval ) )  
+                
+                
+            } else {
+                
+                $(this).on('customchange', arg)
+                
+            }
+                
+            return this
+            
+        },
+
+        
         /**
          *
          * Получаем текстовое (HTML) значение
          *
          *
          */  
-        pretty: function(){
+        valueSystem: function(){
 
-            this.val( this.val() )
-            return this._getPretty()
+            // если у нас значение Null возвращаем null
+            if(this.isNull()) return null
+            // если значение не установлено
+            if(this._getValueSystem() === undefined) {
+                // если нуль допускается то устанавливаем его
+                if(this._isNullable()) return null;
+                return undefined
+            }
+            return this._getValueSystem()
+
+        },
+        
+        /**
+         *
+         * Функция используется крайне редко чтолько в Multitype чтобы подменить текущее и предидущее значения
+         *
+         */         
+        _change: function(val, oldval){
+
+            return [val, oldval]
+            
+        },
+
+        
+        /**
+         *
+         * Возвращаем текущее значение
+         *
+         *
+         */  
+        _getValue: function(){
+            
+            return this.$input.val()
+
+        },
+
+        /**
+         *
+         * Возвращаем текущее значение в читемом виде HTML
+         *
+         *
+         */  
+        _getValuePretty: function(val){
+            
+            return val //this._getValue()
+
+        },
+
+        /**
+         *
+         * Возвращаем текущее значение для передачи в строку
+         *
+         *
+         */  
+        _getValueSystem: function(){
+            
+            return this._getValue()
+
+        },
+        
+        /**
+         *
+         * Устанавливаем текущее значение (без null)
+         *
+         * Кроме установки значения эта функция еще выполняеь грубую проверку
+         *
+         */  
+        _setValue: function(value){
+            
+            this.$input.val(value)
+            
+            //return value
+
+        }, 
+        
+        /**
+         *
+         * Получаем текстовое (HTML) значение
+         *
+         *
+         */  
+        pretty: function(val){
+
+            if(val === undefined) val = this._getValue()
+            
+            return this._getValuePretty(val)
 
         },
 
@@ -113,25 +247,7 @@ define(['reqres-classes/root'], function(rootClass){
 
         },
         
-        /**
-         *
-         * Получаем текстовое (HTML) значение
-         *
-         *
-         */  
-        systemValue: function(){
 
-            // если у нас значение Null возвращаем null
-            if(this.isNull()) return null
-            // если значение не установлено
-            if(this._getValueSystem() === undefined) {
-                // если нуль допускается то устанавливаем его
-                if(this._isNullable()) return null;
-                return undefined
-            }
-            return this._getValueSystem()
-
-        },
         
         /**
          *
@@ -141,7 +257,6 @@ define(['reqres-classes/root'], function(rootClass){
          */  
         reset: function(){
 
-            this.val('')
             this._reset()
 
             if(this._isNullable()) this.val(null)
@@ -314,101 +429,7 @@ define(['reqres-classes/root'], function(rootClass){
             
         },
 
-        /**
-         *
-         * Либо добавляем обработчик события
-         * Либо выполняем событие изменения
-         *     если передать параметр true, событие будет инициировано даже если значение не изменилось
-         *
-         */         
-        change: function(handler){
 
-            if(typeof handler !== 'function') {
-            
-                // если значение не поменялось, уходим
-                if(this.oldval === this.systemValue() && handler !== true) return this
-                
-                var oldval = this.oldval
-                
-                // значение поменялось, сохраняем новое
-                this.oldval = this.systemValue()
-                
-                // выполняем обработчик
-                $(this).trigger('customchange', this._change( this.val(), oldval ) )  
-                
-                
-            } else {
-                
-                $(this).on('customchange', handler)
-                
-            }
-                
-            return this
-            
-        },
-
-        /**
-         *
-         * Возвращаем текущее значение
-         *
-         *
-         */         
-        _change: function(val, oldval){
-
-            return [val, oldval]
-            
-        },
-
-        
-        /**
-         *
-         * Возвращаем текущее значение
-         *
-         *
-         */  
-        _getValue: function(){
-            
-            return this.$input.val()
-
-        },
-
-        /**
-         *
-         * Возвращаем текущее значение в читемом виде HTML
-         *
-         *
-         */  
-        _getValuePretty: function(){
-            
-            return this._getValue()
-
-        },
-
-        /**
-         *
-         * Возвращаем текущее значение для передачи в строку
-         *
-         *
-         */  
-        _getValueSystem: function(){
-            
-            return this._getValue()
-
-        },
-        
-        /**
-         *
-         * Устанавливаем текущее значение (без null)
-         *
-         *
-         */  
-        _setValue: function(value){
-            
-            this.$input.val(value)
-            
-            return value
-
-        }, 
 
         /**
          *
@@ -467,16 +488,6 @@ define(['reqres-classes/root'], function(rootClass){
         },  
 
         
-        /**
-         *
-         * 
-         *
-         */  
-        _getPretty: function(){
-
-
-            
-        },
 
         /**
          *
@@ -520,11 +531,13 @@ define(['reqres-classes/root'], function(rootClass){
         _reset: function(){
 
 
+            this.val('')
 
         }
         
 
     });
+
 
 })
 

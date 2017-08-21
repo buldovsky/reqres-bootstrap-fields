@@ -3,7 +3,7 @@
  * Класс Форм
  * 
  */
-define(['jquery', 'reqres-classes/list', 'reqres-classes/root'], function($, listClass, rootClass){
+define(['jquery', './list', './root'], function($, listClass, rootClass){
 
     // unique string
     var fieldDataKey = 'reqresFormClass';
@@ -76,20 +76,24 @@ define(['jquery', 'reqres-classes/list', 'reqres-classes/root'], function($, lis
          *
          */         
         detect: function() {
-
+			var ttt = arguments
             
             var _this = this
 
-            var handlers = [], fields = [], node
+            var handlers = [], fields = [], node, last_element = false
             for(var j = 0; j < arguments.length; j++){
                 
                 // добавялем обработчик
                 if(typeof arguments[j] == 'function') handlers.push(arguments[j])
+                if(typeof arguments[j] == 'boolean') last_element = arguments[j]
 
-                // добавялем обработчик
-                if(typeof arguments[j] == 'object') node = arguments[j]
+                // перезаписываем элемент последним элементом
+                //if(typeof arguments[j] == 'object' ) node = arguments[j]
+                if(arguments[j] instanceof HTMLElement) node = arguments[j]
+                if(arguments[j] instanceof jQuery) node = arguments[j]
+                
 
-                // добавялем обработчик
+                // перезаписываем поля последней строкой
                 if(typeof arguments[j] == 'string') fields = arguments[j].split(' ')
                 
             }
@@ -104,7 +108,7 @@ define(['jquery', 'reqres-classes/list', 'reqres-classes/root'], function($, lis
             var list_keys = {}, list = [], i = 0
 
             // перебираем все найденные поля
-            var $fields = node.find(this.fieldClassesPattern).each(function(){
+            var $fields = $(node).find(this.fieldClassesPattern).each(function(){
                 
                 var type =  $(this).attr('data-field-module') + '/field-' + $(this).attr('jstype')
 
@@ -140,19 +144,38 @@ define(['jquery', 'reqres-classes/list', 'reqres-classes/root'], function($, lis
                     // получаем имя поля
                     var key = $(this).attr('name')
 
-                    // добавляем в список всех полей
-                    allfields.push([key, Field, key.slice(-2) == '[]' ? _this.$elem.find(_this.fieldClassesPattern).filter('[name="'+key+'"]').index(this) : undefined ])
-
-
                     // получаем индекс поля в списке запрашиваемых
                     var ind = $.inArray(key, fields)
+
+                    // добавляем в список всех полей
+                    allfields.push([key, Field, key.slice(-2) == '[]' ? $(node).find(_this.fieldClassesPattern).filter('[name="'+key+'"]').index(this) : undefined ])  // _this.$elem
+                    
                     // если есть список и в списке запрашиваемых его нет, то игноррируем
-                    if(fields.length > 0) if(ind < 0) return                    
-                    // формируем аргументы для нашего обработчика
-                    args[ind] = Field
+                    if(fields.length == 0) return
+                    if(ind < 0) return                    
+
+                    // если работаем с массивами
+                    if(key.slice(-2) == '[]'){
+                        
+                        if(last_element){
+                            
+							args[ind] = Field
+
+                        } else {
+                            
+                            if(!args[ind]) args[ind] = $()
+                            args[ind] = args[ind].add(Field)
+                            
+                        }
+                        
+                        
+                        
+                    } else args[ind] = Field
 
                 })
 
+                
+                
                 // запускаем наши обработчики
                 $.each(handlers, function(key, handler){
                     handler.apply(_this, (fields.length > 0) ? args : [allfields])
@@ -173,18 +196,19 @@ define(['jquery', 'reqres-classes/list', 'reqres-classes/root'], function($, lis
         fields: function(handler, context) {
 
             var _this = this
+            var ii = 0
             
             this.detect(function(fields){
                 
-                
+
                 $.each(fields, function(i, arr){
 
-                    
+            		ii++
                     var key = arr[0]
                     var Field = arr[1]
                     var index = arr[2]
                     
-                    handler.call(Field, key, Field, index)
+                    handler.call(Field, key, Field, index, ii == fields.length)
                     
                 })
                 
@@ -274,10 +298,25 @@ define(['jquery', 'reqres-classes/list', 'reqres-classes/root'], function($, lis
          */         
         submit: function(deferred){
 
+            
+            if(typeof deferred == 'function'){
+                
+                // добавляем обработчик
+                $(this).on('onsubmit', function(e, def){
+
+                    return deferred.call(def, def)
+
+                })
+
+                return this                
+            }
+
+            
             var _this = this
 
-            var d = $.Deferred().done(function(result){
+            var d // = $.Deferred().done(function(result){
             
+            /*
                 return $.ajax({
 
                     'type'      : _this.$elem.attr('method'),
@@ -286,7 +325,27 @@ define(['jquery', 'reqres-classes/list', 'reqres-classes/root'], function($, lis
                     'dataType'  : 'json',
                     'context'   : _this,
 
+                }).on('protocol.form', function(){
+                    
+                    console.log(arguments)
+                    //return $(this).triggerHandler('onsubmit', [d])
+                    
                 })
+              */  
+                /*
+                .on('protocol.form.success', function(e, Form, data, status, jqXHR){ 
+
+                    
+                    if('last_index' in data) {
+
+                        //Form.submit(data.last_index)
+                        // если к форме есть список, возвращаем элемент для выделения
+                        //if('List' in Form) Form.List.action('activeByIndex', [data.last_index])
+
+                    }
+
+                })
+                */
                 /*
                 .done(function(){
 
@@ -296,15 +355,17 @@ define(['jquery', 'reqres-classes/list', 'reqres-classes/root'], function($, lis
 
                 })
                 */
-                .done(function(){
+                /*
+                .done(function(data){
 
                     // это выполниться если протокол-формы успешно отработан
                     // и протокол вернет true
                     deferred.resolveWith(_this, arguments)
                     
                 })
+                */
                 
-            })
+            //})
             
             
             // перебираем все поля
@@ -315,7 +376,7 @@ define(['jquery', 'reqres-classes/list', 'reqres-classes/root'], function($, lis
                 $.each(fields, function(i, arr){
                 
                     var key = arr[0]
-                    var value = arr[1].systemValue()
+                    var value = arr[1].valueSystem()
 
                     // если значение undefined, значит не передаем его вообще
                     if(value === undefined) return
@@ -328,20 +389,48 @@ define(['jquery', 'reqres-classes/list', 'reqres-classes/root'], function($, lis
                     
                 })
               
-                result = result.join('&')
+				d = $.ajax({
 
+                    'type'      : _this.$elem.attr('method'),
+                    'url'       : _this.$elem.attr('action'),
+                    'data'      : result.join('&'),
+                    'dataType'  : 'json',
+                    'context'   : _this,
+
+                // если все четко
+                }).on('protocolFormSuccess', function(){
+
+                    // это выполниться если протокол-формы успешно отработан
+                    // и протокол вернет true
+                    if(deferred) deferred.resolveWith(_this, arguments)
+                    
+                })
+                
+                d = $(this).triggerHandler('onsubmit', [d])
                 // выполняем аякс
-                d.resolve(result)
+                //d.resolve(result)
                 
 
                 
             })
             
             return d
+            //return $(this).triggerHandler('onsubmit', [d])
             
         }, 
-        
 
+        /*
+
+        object: function(object){
+            
+            if(!object) return this.objectClass
+            this.objectClass = object
+            
+            return this
+        },
+        
+        */
+        
         /**
          *
          * Присваиваем значения
@@ -353,25 +442,28 @@ define(['jquery', 'reqres-classes/list', 'reqres-classes/root'], function($, lis
 
             var _this = this  
 
+
             // перебираем все данные
             $.each(data, function(key, value){
 
                 // если значение массив
                 if(key.slice(-2) == '[]') {
 
-                    var maxIndex = value.length - 1
+                    var maxIndex = value.length
 
                     // если поле существует уходим
-                    if(_this.fieldExists(key, maxIndex)) return
+                    if(_this.fieldExists(key, maxIndex-1)) return
 
                     // находим к какому списку принадлежит поле
                     // перебираем все списки
                     $.each(_this.lists, function(k, list){
 
                         // ищем наше поле в шаблоне списка
-                        if( $(_this.fieldClassesPattern, list.template()).filter('[name="'+key+'"]').length > 0)
-                            // добавляем необходимое количество строк
-                            while(!_this.fieldExists(key, maxIndex)) list.add(1)
+                        if( $(_this.fieldClassesPattern, list.template()).filter('[name="'+key+'"]').length > 0){
+							// создаем в спике указанное количество элементов                            
+                            list.count(maxIndex)
+                            
+                        }
 
                     })
 
@@ -387,7 +479,6 @@ define(['jquery', 'reqres-classes/list', 'reqres-classes/root'], function($, lis
                 // если поле одинарное
                 if(index === undefined) return this.val(data[key])
 
-                //console.log(Field, index, data[key][index])
                 if(data[key][index] === undefined) return
 
                 this.val(data[key][index])
@@ -465,7 +556,7 @@ define(['jquery', 'reqres-classes/list', 'reqres-classes/root'], function($, lis
         // получаем аргументы
         var args = arguments
         // без аргументов никак
-        if(args.length == 0) return
+        if(args.length == 0) return;
         
         // первым аргументом то вокруг чего ищем форму
         var context = args[0]
@@ -474,12 +565,13 @@ define(['jquery', 'reqres-classes/list', 'reqres-classes/root'], function($, lis
         
         // находим форму выше
         var $form = $(context)
-        if($form.length < 1) return context
 
-        while(!$form.is('form')) { 
-            $form = $form.parent() 
-            if($form.is('html')) return context
-        } 
+        $form = $form.add($form.parents()).filter('form')
+
+        if($form.length < 1) {
+            alert('Не удалось найти и создать класс формы')
+            return context
+        }
 
         // ищем класс формы
         var Form = $form.data(fieldDataKey)
