@@ -1,0 +1,24 @@
+{
+  "name": "@reqres/classes",
+  "version": "1.0.0",
+  "description": "Reqres framework js classes",
+  "main": "field.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/buldovsky/reqres-classes.git"
+  },
+  "keywords": [
+    "Reqres",
+    "classes",
+    "framework"
+  ],
+  "author": "Max Buldovsky",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/buldovsky/reqres-classes/issues"
+  },
+  "homepage": "https://github.com/buldovsky/reqres-classes#readme"
+}
